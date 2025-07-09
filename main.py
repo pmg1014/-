@@ -36,6 +36,7 @@ if st.button("📅 계획표 만들기"):
     total_score = 0
     valid_subjects = {}
 
+    # 유효한 과목 필터링 및 점수 계산
     for subject, info in subjects.items():
         days_left = (info["시험일"] - today).days
         if days_left <= 0:
@@ -54,13 +55,14 @@ if st.button("📅 계획표 만들기"):
         max_days = max(v["days_left"] for v in valid_subjects.values())
         total_available_hours = max_days * daily_max_hours
 
-        # 각 과목 총 공부 시간 계산
+        # 각 과목에 공부 시간 분배 및 목표 생성
         for subject, info in valid_subjects.items():
             ratio = info["score"] / total_score
             total_hours = round(ratio * total_available_hours, 1)
             valid_subjects[subject]["total_hours"] = total_hours
             valid_subjects[subject]["goals"] = []
 
+            # 목표 나누기 (개념/문제/오답)
             breakdown = [("개념 정리", 0.4), ("문제 풀이", 0.4), ("오답 정리", 0.2)]
             for part, r in breakdown:
                 part_h = round(total_hours * r, 1)
@@ -69,20 +71,20 @@ if st.button("📅 계획표 만들기"):
                     valid_subjects[subject]["goals"].append((part, round(chunk, 1)))
                     part_h -= chunk
 
-        # 목표 큐 생성 (시험일 빠른 순 정렬)
+        # 전체 목표 큐 (시험일 기준 정렬)
         goals_queue = []
         for subject, info in sorted(valid_subjects.items(), key=lambda x: x[1]["시험일"]):
             for goal, h in info["goals"]:
                 goals_queue.append((subject, goal, h))
 
-        # 목표가 부족한 경우 반복 삽입
+        # 목표 부족 시 반복 학습 추가
         expected_goal_count = int((max_days * daily_max_hours) / block_unit)
         original_goals = goals_queue.copy()
         while len(goals_queue) < expected_goal_count:
             repeat_sample = random.sample(original_goals, min(len(original_goals), 10))
             goals_queue.extend(repeat_sample)
 
-        # 계획표 생성
+        # 공부 계획표 생성
         plan = defaultdict(list)
         current_date = today
 
@@ -106,7 +108,7 @@ if st.button("📅 계획표 만들기"):
             plan[current_date] = today_plan
             current_date += datetime.timedelta(days=1)
 
-        # 결과 출력
+        # 출력 및 결과 저장
         st.success(f"✅ {name}님의 공부 계획표")
 
         full_data = []
@@ -130,10 +132,8 @@ if st.button("📅 계획표 만들기"):
             df = pd.DataFrame(data, columns=["시간대", "과목", "공부 목표"])
             st.table(df)
 
-        # CSV 다운로드
+        # CSV 다운로드 기능
         if full_data:
             final_df = pd.DataFrame(full_data, columns=["날짜", "시간", "과목", "공부 목표"])
             csv = final_df.to_csv(index=False, encoding='utf-8-sig')
-            st.download_button("📥 계획표_
-
-
+            st.download_button("📥 계획표 다운로드 (CSV)", data=csv, file_name="공부계획표.csv", mime="text/csv")
