@@ -54,14 +54,12 @@ if st.button("📅 계획표 만들기"):
         max_days = max(v["days_left"] for v in valid_subjects.values())
         total_available_hours = max_days * daily_max_hours
 
-        # 과목별 총 공부 시간 할당 및 목표 분해
         for subject, info in valid_subjects.items():
             ratio = info["score"] / total_score
             total_hours = round(ratio * total_available_hours, 1)
             valid_subjects[subject]["total_hours"] = total_hours
             valid_subjects[subject]["goals"] = []
 
-            # 목표 분배: 개념 40%, 문제 40%, 오답 20%
             breakdown = [("개념 정리", 0.4), ("문제 풀이", 0.4), ("오답 정리", 0.2)]
             for part, r in breakdown:
                 part_h = round(total_hours * r, 1)
@@ -76,14 +74,14 @@ if st.button("📅 계획표 만들기"):
             for goal, h in info["goals"]:
                 goals_queue.append((subject, goal, h))
 
-        # 반복 목표 삽입 (하루 공부시간을 다 채우기 위함)
+        # 반복 목표 삽입
         expected_goal_count = int((max_days * daily_max_hours) / block_unit)
         original_goals = goals_queue.copy()
         while len(goals_queue) < expected_goal_count:
             repeat_sample = random.sample(original_goals, min(len(original_goals), 10))
             goals_queue.extend(repeat_sample)
 
-        # 공부 계획표 생성
+        # 계획표 생성
         plan = defaultdict(list)
         current_date = today
 
@@ -107,7 +105,7 @@ if st.button("📅 계획표 만들기"):
             plan[current_date] = today_plan
             current_date += datetime.timedelta(days=1)
 
-        # 본문 계획표 출력
+        # 출력
         st.success(f"✅ {name}님의 공부 계획표 생성 완료")
 
         full_data = []
@@ -125,4 +123,23 @@ if st.button("📅 계획표 만들기"):
                 end_str = f"{int(end):02d}:{int((end % 1) * 60):02d}"
                 time_str = f"{start_str} ~ {end_str}"
                 data.append((time_str, subject, f"{goal} ({hours}시간)"))
-                full_d_
+                full_data.append((date.strftime("%Y-%m-%d"), time_str, subject, f"{goal} ({hours}시간)"))
+                time_cursor = end
+
+            df = pd.DataFrame(data, columns=["시간대", "과목", "공부 목표"])
+            st.table(df)
+
+        # 사이드바 요약
+        with st.sidebar:
+            st.subheader("📋 전체 계획표 요약")
+            if full_data:
+                final_df = pd.DataFrame(full_data, columns=["날짜", "시간", "과목", "공부 목표"])
+                st.dataframe(final_df, use_container_width=True)
+
+                csv = final_df.to_csv(index=False, encoding="utf-8-sig")
+                st.download_button(
+                    label="📥 계획표 다운로드 (CSV)",
+                    data=csv,
+                    file_name="공부계획표.csv",
+                    mime="text/csv"
+                )
