@@ -61,7 +61,7 @@ if st.button('🗓️ 공부 계획표 생성'):
             }
 
             # 과목들을 균형 있게 분배할 순서 큐 만들기
-            subject_queue = deque(sorted(slot_allocation.items(), key=lambda x: -x[1]))  # effort 많은 과목 먼저
+            subject_queue = deque(sorted(slot_allocation.items(), key=lambda x: -x[1]))
 
             schedule = defaultdict(list)
             current_date = today
@@ -94,4 +94,7 @@ if st.button('🗓️ 공부 계획표 생성'):
                 time_list = [entry[0] for entry in schedule[date]]
                 subject_list = [entry[1] for entry in schedule[date]]
                 df = pd.DataFrame({
-                    "시간": time_lis_
+                    "시간": time_list,
+                    "공부 과목": subject_list
+                })
+                st.table(df)
