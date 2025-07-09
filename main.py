@@ -1,13 +1,13 @@
 import streamlit as st
 import datetime
-import pandas as pd
 from collections import defaultdict
 
-st.title('🗓️ 시험 공부 시간표 생성기')
+st.title('🧠 시간대 기반 시험 공부 시간표')
 
 name = st.text_input('이름을 입력해주세요:')
 subject_count = st.number_input('시험 과목 수를 입력하세요:', min_value=1, max_value=10, value=3)
 daily_hours = st.slider('하루 공부 시간 (시간 단위)', 1, 10, 4)
+start_hour = st.slider('공부 시작 시간 (시)', 6, 20, 9)
 
 subjects = {}
 st.subheader('📌 과목별 정보 입력')
@@ -32,7 +32,7 @@ if st.button('📅 시간표 생성'):
         st.warning('과목을 입력해주세요.')
     else:
         today = datetime.date.today()
-        schedule = defaultdict(lambda: [''] * daily_hours)
+        schedule = defaultdict(list)
 
         # 전체 노력량 계산
         total_effort = 0
@@ -47,32 +47,5 @@ if st.button('📅 시간표 생성'):
             effort_map[subject] = {'effort': effort, 'days': days_left}
             total_effort += effort
 
-        # 총 분배 가능한 슬롯 수
-        total_slots = sum(v['days'] for v in effort_map.values()) * daily_hours
-
-        # 각 과목에 할당할 시간 슬롯 수 계산
-        slot_allocation = {}
-        for subject, data in effort_map.items():
-            slot_allocation[subject] = round((data['effort'] / total_effort) * total_slots)
-
-        # 시간표 생성
-        current_slot = {subject: 0 for subject in slot_allocation}
-        subject_list = list(slot_allocation.keys())
-        date_cursor = today
-
-        while any(current_slot[subject] < slot_allocation[subject] for subject in subject_list):
-            for hour in range(daily_hours):
-                for subject in subject_list:
-                    if current_slot[subject] < slot_allocation[subject]:
-                        schedule[date_cursor][hour] = subject
-                        current_slot[subject] += 1
-                        break  # 한 슬롯당 한 과목만
-            date_cursor += datetime.timedelta(days=1)
-
-        # 표 출력
-        st.success(f'{name}님의 공부 시간표입니다!')
-        for date in sorted(schedule.keys()):
-            st.markdown(f"### {date.strftime('%Y-%m-%d')}")
-            col_names = [f"{i+1}교시" for i in range(daily_hours)]
-            df = pd.DataFrame([schedule[date]], columns=col_names)
-            st.dataframe(df)
+        # 총 슬롯 수 = 남은 일수 × 하루 공부 시간
+        total_slots =_
