@@ -2,6 +2,7 @@ import streamlit as st
 import datetime
 import pandas as pd
 from collections import defaultdict
+import random
 
 st.title("📘 실제로 도움이 되는 세부 시험 계획표")
 
@@ -42,7 +43,7 @@ if st.button("📅 계획표 만들기"):
             "score": score,
             "days_left": days_left,
             "시험일": info["시험일"],
-            "total_hours": 0  # 나중에 계산
+            "total_hours": 0
         }
         total_score += score
         max_days = max(max_days, days_left)
@@ -53,52 +54,47 @@ if st.button("📅 계획표 만들기"):
         total_available_hours = daily_max_hours * max_days
 
         # 과목별 전체 할당 시간 계산
+        all_goals = []
         for subject in subject_scores:
             ratio = subject_scores[subject]["score"] / total_score
             total_hours = round(ratio * total_available_hours, 2)
             subject_scores[subject]["total_hours"] = total_hours
-            subject_scores[subject]["remaining"] = total_hours
 
-            # 세부 목표 분할
-            subject_scores[subject]["goals"] = []
             breakdown = [
                 ("개념 정리", 0.4),
                 ("문제 풀이", 0.4),
                 ("오답 정리", 0.2),
             ]
-            for name, ratio in breakdown:
-                part_hours = round(total_hours * ratio, 2)
-                chunks = []
-                while part_hours > 0:
-                    h = min(part_hours, 1.5)
-                    chunks.append((name, round(h, 2)))
-                    part_hours -= h
-                subject_scores[subject]["goals"].extend(chunks)
 
-        # 계획표 생성
+            for name, r in breakdown:
+                hours = round(total_hours * r, 2)
+                while hours > 0:
+                    h = min(hours, 1.5)
+                    all_goals.append((subject, name, round(h, 2)))
+                    hours -= h
+
+        # 전체 목표를 분배할 큐
+        random.shuffle(all_goals)  # 과목 분산을 위한 셔플
+
         plan = defaultdict(list)
         current_date = today
 
         for _ in range(max_days):
             available = daily_max_hours
-            day_schedule = []
-
-            # 과목별로 고르게 분산
-            for subject, info in subject_scores.items():
-                if not info["goals"]:
+            day_plan = []
+            used_subjects = set()
+            i = 0
+            while i < len(all_goals) and available > 0:
+                subject, goal, h = all_goals[i]
+                if subject in used_subjects or h > available:
+                    i += 1
                     continue
-                while available > 0 and info["goals"]:
-                    goal, time = info["goals"][0]
-                    if time > available:
-                        break
-                    info["goals"].pop(0)
-                    available -= time
-                    day_schedule.append((subject, goal, time))
-                if available <= 0:
-                    break
-
-            if day_schedule:
-                plan[current_date] = day_schedule
+                used_subjects.add(subject)
+                day_plan.append((subject, goal, h))
+                available -= h
+                all_goals.pop(i)  # 큐에서 제거
+            if day_plan:
+                plan[current_date] = day_plan
             current_date += datetime.timedelta(days=1)
 
         # 출력
@@ -113,8 +109,8 @@ if st.button("📅 계획표 만들기"):
             for subject, goal, hours in schedule:
                 start = time_cursor
                 end = start + hours
-                start_str = f"{int(start):02d}:{int((start%1)*60):02d}"
-                end_str = f"{int(end):02d}:{int((end%1)*60):02d}"
+                start_str = f"{int(start):02d}:{int((start % 1)*60):02d}"
+                end_str = f"{int(end):02d}:{int((end % 1)*60):02d}"
                 time_str = f"{start_str} ~ {end_str}"
                 data.append((time_str, subject, f"{subject} {goal} ({hours}시간)"))
                 time_cursor = end
